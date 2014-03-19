@@ -21,8 +21,15 @@ all_companies = []
 
 class Company():
 
-    def __init__(self, cvr):
+    def __init__(self, cvr, name):
         self.cvr = cvr
+        self.name = name
+
+    def to_dict(self):
+        return {
+           'cvr': self.cvr,
+           'name': self.name
+        }
 
 
 class TimeContext():
@@ -53,7 +60,12 @@ for filename in glob.glob('aarsregnskaber/*.xml'):
         cvr = root.find(tagname_cvr, namespaces=namespaces).text
         companyname = root.find(tagname_companyname, namespaces=namespaces).text
 
-        all_companies.append(companyname)
+
+
+        all_companies.append(Company(
+          cvr=cvr,
+          name=companyname,
+        ))
 
         # build contexts
         contexts = {}
@@ -81,10 +93,12 @@ def index():
     return render_template("index.html")
 
 
+json_companies = [c.to_dict() for c in all_companies]
+
 @app.route("/all.json")
 def all_json():
     # return jsonify(**f)
-    return jsonify(companies=all_companies)
+    return jsonify(companies=json_companies)
 
 
 if __name__=="__main__":
