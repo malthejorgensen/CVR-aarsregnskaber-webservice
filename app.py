@@ -1,11 +1,15 @@
+from __future__ import print_function
+
 from flask import Flask, render_template, request, jsonify, Response
 
 import glob
-from io import StringIO
+from cStringIO import StringIO
+
 from datetime import datetime
 import xml.etree.ElementTree as ET
 
 import csv
+from unicode_csv import UnicodeWriter
 
 namespaces = {
     'c': 'http://xbrl.dcca.dk/gsd',
@@ -136,7 +140,7 @@ def all_json():
 @app.route("/all.csv")
 def all_csv():
     pseudofile = StringIO()
-    spamwriter = csv.writer(pseudofile) #, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+    spamwriter = UnicodeWriter(pseudofile, encoding='utf-8') #, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
     header =  ','.join([
         'company.name',
         'company.cvr',
