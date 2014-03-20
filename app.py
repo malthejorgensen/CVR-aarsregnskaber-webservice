@@ -30,7 +30,7 @@ tagname_city = '{http://xbrl.dcca.dk/gsd}AddressOfSubmittingEnterprisePostcodeAn
 # tagname_auditor ='{http://xbrl.dcca.dk/gsd}NameOfAuditFirm'
 
 fields = {
-    'tagname_grossprofitloss': '{http://xbrl.dcca.dk/fsa}GrossProfitLoss',
+    #'tagname_grossprofitloss': '{http://xbrl.dcca.dk/fsa}GrossProfitLoss',
     'Overskud/Tab': '{http://xbrl.dcca.dk/fsa}ProfitLoss',
     'Indtjening': '{http://xbrl.dcca.dk/fsa}Revenue',
     'Skat': '{http://xbrl.dcca.dk/fsa}TaxExpense',
@@ -77,7 +77,7 @@ class Company():
            'city': self.city,
            'address': self.address,
            # auditor': self.auditor,
-           'regnskaber': contexts
+           'regnskaber': [c.to_dict() for c in self.contexts],
         }
 
 
