@@ -1,0 +1,27 @@
+
+
+<dl>
+  <dt>Virksomhedsnavn</dt><dd>{{ company.name }}</dd>
+  <dt>CVR</dt><dd>{{ company.cvr }}</dd>
+  <dt>Adresse</dt><dd>{{ company.address }}<br>{{ company.city }}</dd>
+</dl>
+
+  <div ng-repeat="regnskab in company.regnskaber"> <!-- | filter: search"> -->
+    <div ng-if="regnskab.end_date">
+    <h3>Regnskabsåret {{ regnskab.year }}</h3>
+    ({{ regnskab.start_date * 1000 | date: 'dd/MM-yyyy' }} - {{ regnskab.end_date * 1000 | date: 'dd/MM-yyyy' }})
+    </div>
+    <div ng-if="regnskab.instant_date">
+    <h3>Opgrørelse {{ regnskab.instant_date * 1000 | date: 'dd/MM-yyyy' }}</h3>
+    </div>
+    <table>
+      <tr>
+        <th>Regnskabspost</th>
+        <th>Værdi</th>
+      </tr>
+      <tr ng-repeat="(field, value) in regnskab.fields"> <!-- | filter: search"> -->
+        <td>{{ field }}</td>
+        <td><span ng-class="(value >= 0) && 'positive' || 'negative'">{{ value }}</span> kr.</td>
+      </tr>
+    </table>
+  </div>

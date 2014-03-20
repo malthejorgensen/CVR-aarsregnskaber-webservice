@@ -1,0 +1,28 @@
+
+<p>
+  Dette er en webservice der udstiller dele af et datasæt 999 virksomheders
+  årsregnskaber.
+</p>
+
+
+
+<input ng-model="search" type="text" placeholder="Søg efter en virksomhed">
+<table>
+  <tr>
+    <th>Virksomhedsnavn</th>
+    <th>CVR</th>
+  </tr>
+  <tr ng-repeat="company in companies | filter: search">
+    <td><a href="#/company/{{company.cvr}}">{{ company.name }}</a></td>
+    <td><a href="#/company/{{company.cvr}}">{{ company.cvr }}</a></td>
+  </tr>
+</table>
+
+<p>
+  Du kan lige nu gå til <a href="/all.json">/all.json</a> og få en liste over
+  virksomhedernes navne, CVR-nummer og feltet "GrossProfitLoss" i JSON-format.
+</p>
+<p>
+  På <a href="/all.csv">/all.csv</a> kan du få en liste over
+  virksomhedernes navne, CVR-nummer og feltet "GrossProfitLoss" i CSV-format.
+</p>

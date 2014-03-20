@@ -1,10 +1,15 @@
+# coding=utf-8
 from __future__ import print_function
+
+import argparse
 
 from flask import Flask, render_template, request, jsonify, Response
 
 import glob
 from cStringIO import StringIO
 
+import time
+import calendar
 from datetime import datetime
 import xml.etree.ElementTree as ET
 
@@ -13,35 +18,65 @@ from unicode_csv import UnicodeWriter
 
 namespaces = {
     'c': 'http://xbrl.dcca.dk/gsd',
-    'd': 'http://xbrl.dcca.dk/fsa'
+    'd': 'http://xbrl.dcca.dk/fsa',
+    'g': 'http://xbrl.dcca.dk/arr',
     #http://www.xbrl.org/2003/instance
 }
 # tagname_cvr = # '{http://xbrl.dcca.dk/gsd}IdentificationNumberCvrOfSubmittingEnterprise' # Not all files contains this
 tagname_cvr = '{http://xbrl.dcca.dk/gsd}IdentificationNumberCvrOfReportingEntity'
 tagname_companyname = '{http://xbrl.dcca.dk/gsd}NameOfReportingEntity'
-tagname_grossprofitloss = '{http://xbrl.dcca.dk/fsa}GrossProfitLoss'
+tagname_address = '{http://xbrl.dcca.dk/gsd}AddressOfSubmittingEnterpriseStreetAndNumber'
+tagname_city = '{http://xbrl.dcca.dk/gsd}AddressOfSubmittingEnterprisePostcodeAndTown'
+# tagname_auditor ='{http://xbrl.dcca.dk/gsd}NameOfAuditFirm'
+
+fields = {
+    'tagname_grossprofitloss': '{http://xbrl.dcca.dk/fsa}GrossProfitLoss',
+    'Overskud/Tab': '{http://xbrl.dcca.dk/fsa}ProfitLoss',
+    'Indtjening': '{http://xbrl.dcca.dk/fsa}Revenue',
+    'Skat': '{http://xbrl.dcca.dk/fsa}TaxExpense',
+    'Egenkapital': '{http://xbrl.dcca.dk/fsa}Equity',
+    'Lønninger': '{http://xbrl.dcca.dk/fsa}WagesAndSalaries',
+    'Grunde og bygninger': '{http://xbrl.dcca.dk/fsa}LandAndBuildings',
+    'Andre indtægter': '{http://xbrl.dcca.dk/fsa}OtherFinanceIncome',
+    'Andre udgifter': '{http://xbrl.dcca.dk/fsa}OtherFinanceExpenses',
+}
 
 tagname_context = '{http://www.xbrl.org/2003/instance}context'
 
 
 all_companies = []
+company_dictionary = {}
+
+
+def unixtimestamp(d):
+    #return time.mktime(d.timetuple())
+    #print(d.utctimetuple())
+    return calendar.timegm(d.utctimetuple())
+
 
 class Company():
 
-    def __init__(self, cvr, name):
+    def __init__(self, cvr, name, address, city):
         self.cvr = cvr
         self.name = name
+        self.city = city
+        self.address = address
+        # self.auditor = None
+
         self.contexts = []
 
     def to_dict(self):
         contexts = {}
         for c in self.contexts:
-            if c.data:
+            if c.fields:
                 contexts[c.year] = c.to_dict()
 
         return {
            'cvr': self.cvr,
            'name': self.name,
+           'city': self.city,
+           'address': self.address,
+           # auditor': self.auditor,
            'regnskaber': contexts
         }
 
@@ -52,7 +87,7 @@ class TimeContext():
         self.end_date = None
         self.instant_date = None
         self.year = None
-        self.data = {}
+        self.fields = {}
         self.context_id = {}
 
     @classmethod
@@ -62,28 +97,28 @@ class TimeContext():
             return None
 
         self = cls()
-        self.data = {}
+        self.fields = {}
         self.context_id = node.get('id')
 
         if node_period.find('{http://www.xbrl.org/2003/instance}instant') is not None:
-            self.instant_date = datetime.strptime(node_period.find('{http://www.xbrl.org/2003/instance}instant').text, '%Y-%m-%d')
-            self.year = self.instant_date.year
-            return None
+            self.instant_date = unixtimestamp(datetime.strptime(node_period.find('{http://www.xbrl.org/2003/instance}instant').text, '%Y-%m-%d'))
+            self.year = datetime.strptime(node_period.find('{http://www.xbrl.org/2003/instance}instant').text, '%Y-%m-%d').year
         elif node_period.find('{http://www.xbrl.org/2003/instance}startDate') is not None and \
              node_period.find('{http://www.xbrl.org/2003/instance}endDate') is not None:
-            self.start_date = datetime.strptime(node_period.find('{http://www.xbrl.org/2003/instance}startDate').text, '%Y-%m-%d')
-            self.end_date = datetime.strptime(node_period.find('{http://www.xbrl.org/2003/instance}endDate').text, '%Y-%m-%d')
-            self.year = self.start_date.year
+            self.start_date = unixtimestamp(datetime.strptime(node_period.find('{http://www.xbrl.org/2003/instance}startDate').text, '%Y-%m-%d'))
+            self.end_date   = unixtimestamp(datetime.strptime(node_period.find('{http://www.xbrl.org/2003/instance}endDate').text, '%Y-%m-%d'))
+            self.year = datetime.strptime(node_period.find('{http://www.xbrl.org/2003/instance}startDate').text, '%Y-%m-%d').year
         return self
 
     def to_dict(self):
         d = {
-           'start_date': self.start_date,
-           'end_date': self.end_date,
-           'year': self.year,
-           'context_id': self.context_id,
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'instant_date': self.instant_date,
+            'year': self.year,
+            'context_id': self.context_id,
+            'fields': self.fields
         }
-        d.update(self.data)
         return d
 
 
@@ -95,12 +130,19 @@ for filename in glob.glob('aarsregnskaber/*.xml'):
         # Get CVR
         cvr = root.find(tagname_cvr, namespaces=namespaces).text
         companyname = root.find(tagname_companyname, namespaces=namespaces).text
+        # auditor = root.find(tagname_auditor, namespaces=namespaces).text
+        address = root.find(tagname_address, namespaces=namespaces).text
+        city = root.find(tagname_city, namespaces=namespaces).text
 
         company = Company(
           cvr=cvr,
           name=companyname,
+          # auditor=auditor,
+          address=address,
+          city=city
         )
         all_companies.append(company)
+        company_dictionary[company.cvr] = company
 
         # build contexts
         contexts = {}
@@ -113,13 +155,14 @@ for filename in glob.glob('aarsregnskaber/*.xml'):
                 company.contexts.append(context)
 
         # get data dependent on contexts
-        for node in root.findall(tagname_grossprofitloss, namespaces=namespaces):
-            try:
-                context_id = node.get('contextRef')
-                contexts[context_id].data['grossprofitloss'] = node.text
+        for fieldname, tagname in fields.items():
+            for node in root.findall(tagname, namespaces=namespaces):
+                try:
+                    context_id = node.get('contextRef')
+                    contexts[context_id].fields[fieldname] = node.text
 
-            except KeyError:
-                raise KeyError('Matching <context>-element for contextRef-attribute not found')
+                except KeyError:
+                    raise KeyError('Matching <context>-element for contextRef-attribute not found')
 
 
 app = Flask(__name__)
@@ -137,6 +180,11 @@ def all_json():
     # return jsonify(**f)
     return jsonify(companies=json_companies)
 
+@app.route("/company/<int:cvr>.json")
+def company_json(cvr):
+    print(cvr)
+    return jsonify(**company_dictionary[str(cvr)].to_dict())
+
 @app.route("/all.csv")
 def all_csv():
     pseudofile = StringIO()
@@ -150,18 +198,27 @@ def all_csv():
 
     for company in all_companies:
         for context in company.contexts:
-            if 'grossprofitloss' in context.data:
+            if 'grossprofitloss' in context.fields:
                 spamwriter.writerow([
                     company.name,
                     company.cvr,
                     context.year,
-                    context.data['grossprofitloss'],
+                    context.fields['grossprofitloss'],
                 ])
 
     return Response(header + '\n' + pseudofile.getvalue(), mimetype='text/csv')
 
 
+
+
+
+parser = argparse.ArgumentParser(description='A small webserver for hosting the cvr-aarsregnskaber-webservice')
+parser.add_argument('--debug', action='store_true', help='Run the server in debug mode')
+
+args = parser.parse_args()
+
 if __name__=="__main__":
-    # app.run(host='0.0.0.0',port=80, debug=True)
-    #app.run()
-    app.run(debug=True)
+    if args.debug:
+        app.run(debug=True)
+    else:
+        app.run(host='0.0.0.0', port=80)

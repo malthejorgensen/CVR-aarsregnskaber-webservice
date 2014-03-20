@@ -1,20 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="mApp">
+<!-- <html ng&#45;app> -->
   <head>
+    <!-- <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/foundation/5.1.1/css/normalize.min.css"> -->
+    <!-- <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/foundation/5.1.1/css/foundation.min.css"> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/foundation/5.1.1/js/foundation.min.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.0rc3/angular.min.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.0rc3/angular&#45;route.min.js"></script> -->
+    <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script> -->
+    <!-- <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/restangular/1.3.1/restangular.min.js"></script> -->
+    <link rel="stylesheet" href="/static/css/normalize.min.css">
+    <link rel="stylesheet" href="/static/css/foundation.min.css">
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/js/foundation.min.js"></script>
+    <script src="/static/js/angular.min.js"></script>
+    <script src="/static/js/angular-route.min.js"></script>
+    <script src="/static/js/lodash.min.js"></script>
+    <script src="/static/js/restangular.min.js"></script>
+    <script src="/static/controllers.js"></script>
+    <style>
+      .positive {
+        color: green;
+      }
+      .negative {
+        color: red;
+      }
+    </style>
   </head>
-  <body>
-    <p>
-      Dette er en webservice der udstiller dele af et datasæt 999 virksomheders
-      årsregnskaber.
-    </p>
-
-    <p>
-      Du kan lige nu gå til <a href="/all.json">/all.json</a> og få en liste over
-      virksomhedernes navne, CVR-nummer og feltet "GrossProfitLoss" i JSON-format.
-    </p>
-    <p>
-      På <a href="/all.csv">/all.csv</a> kan du få en liste over
-      virksomhedernes navne, CVR-nummer og feltet "GrossProfitLoss" i CSV-format.
-    </p>
+  <body ng-controller="HomeController">
+    <nav class="top-bar" data-topbar>
+      <ul class="title-area">
+        <li class="name">
+          <h1><a href="#">CVR årsregnskaber webapp</a></h1>
+        </li>
+      </ul>
+    </nav>
+    <div class="row" ng-view>
+    </div>
   </body>
 </html>
